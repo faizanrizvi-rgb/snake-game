@@ -1,0 +1,118 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Mini Arcade - Snake & Brick Breaker</title>
+    <style>
+        body{margin:0;background:#111827;color:#fff;font-family:Arial;display:flex;justify-content:center;align-items:center;height:100vh}
+        #menu,#game{display:flex;flex-direction:column;align-items:center}
+        button{padding:10px 18px;margin:6px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:16px;cursor:pointer}
+        canvas{background:#000;border:3px solid #3b82f6}
+        .hidden{display:none}
+        #top{display:flex;gap:15px;align-items:center;margin-bottom:10px}
+    </style>
+</head>
+<body>
+<div id="menu">
+    <h1>🎮 Mini Arcade</h1>
+    <button onclick="startSnake()">🐍 Snake</button>
+    <button onclick="startBrick()">🧱 Brick Breaker</button>
+</div>
+
+<div id="game" class="hidden">
+    <div id="top">
+        <button onclick="backMenu()">⬅ Menu</button>
+        <div>Score: <span id="score">0</span></div>
+        <button onclick="restart()">Restart</button>
+    </div>
+    <canvas id="c" width="600" height="400"></canvas>
+</div>
+
+<script>
+    const menu=document.getElementById("menu"),game=document.getElementById("game");
+    const cv=document.getElementById("c"),ctx=cv.getContext("2d");
+    const scoreEl=document.getElementById("score");
+    let mode="",anim,score=0;
+
+    function showGame(){menu.classList.add("hidden");game.classList.remove("hidden");}
+    function backMenu(){cancelAnimationFrame(anim);menu.classList.remove("hidden");game.classList.add("hidden");}
+    function restart(){ if(mode==="snake") startSnake(); else if(mode==="brick") startBrick();}
+
+    document.addEventListener("keydown",e=>{
+        if(mode==="snake"){
+            if(e.key==="ArrowUp"&&dy===0){dx=0;dy=-20;}
+            if(e.key==="ArrowDown"&&dy===0){dx=0;dy=20;}
+            if(e.key==="ArrowLeft"&&dx===0){dx=-20;dy=0;}
+            if(e.key==="ArrowRight"&&dx===0){dx=20;dy=0;}
+        }else if(mode==="brick"){
+            if(e.key==="ArrowLeft") left=true;
+            if(e.key==="ArrowRight") right=true;
+        }
+    });
+    document.addEventListener("keyup",e=>{
+        if(mode==="brick"){
+            if(e.key==="ArrowLeft") left=false;
+            if(e.key==="ArrowRight") right=false;
+        }
+    });
+
+    // Snake
+    let snake,food,dx,dy,last=0;
+    function startSnake(){
+        cancelAnimationFrame(anim);mode="snake";showGame();score=0;scoreEl.textContent=0;
+        snake=[{x:200,y:200}];dx=20;dy=0;
+        food={x:Math.floor(Math.random()*30)*20,y:Math.floor(Math.random()*20)*20};
+        function loop(t){
+            if(t-last<100){anim=requestAnimationFrame(loop);return;} last=t;
+            let h={x:snake[0].x+dx,y:snake[0].y+dy};
+            if(h.x<0||h.y<0||h.x>=600||h.y>=400||snake.some(s=>s.x===h.x&&s.y===h.y)){alert("Game Over");backMenu();return;}
+            snake.unshift(h);
+            if(h.x===food.x&&h.y===food.y){
+                score++;scoreEl.textContent=score;
+                food={x:Math.floor(Math.random()*30)*20,y:Math.floor(Math.random()*20)*20};
+            }else snake.pop();
+            ctx.fillStyle="#000";ctx.fillRect(0,0,600,400);
+            ctx.fillStyle="red";ctx.fillRect(food.x,food.y,20,20);
+            ctx.fillStyle="lime";snake.forEach(s=>ctx.fillRect(s.x,s.y,20,20));
+            anim=requestAnimationFrame(loop);
+        }
+        anim=requestAnimationFrame(loop);
+    }
+
+    // Brick
+    let paddle,ball,bricks,left=false,right=false;
+    function startBrick(){
+        cancelAnimationFrame(anim);mode="brick";showGame();score=0;scoreEl.textContent=0;
+        paddle={x:250,y:380,w:100,h:10};
+        ball={x:300,y:200,vx:3,vy:-3,r:8};
+        bricks=[];
+        for(let r=0;r<5;r++)for(let c=0;c<8;c++)bricks.push({x:10+c*72,y:30+r*22,w:60,h:15,alive:true});
+        function loop(){
+            if(left)paddle.x-=6;
+            if(right)paddle.x+=6;
+            paddle.x=Math.max(0,Math.min(500,paddle.x));
+            ball.x+=ball.vx;ball.y+=ball.vy;
+            if(ball.x<ball.r||ball.x>600-ball.r)ball.vx*=-1;
+            if(ball.y<ball.r)ball.vy*=-1;
+            if(ball.y>400){alert("Game Over");backMenu();return;}
+            if(ball.x>paddle.x&&ball.x<paddle.x+paddle.w&&ball.y+ball.r>paddle.y){ball.vy=-Math.abs(ball.vy);}
+            bricks.forEach(b=>{
+                if(b.alive&&ball.x>b.x&&ball.x<b.x+b.w&&ball.y>b.y&&ball.y<b.y+b.h){
+                    b.alive=false;ball.vy*=-1;score++;scoreEl.textContent=score;
+                }
+            });
+            if(bricks.every(b=>!b.alive)){alert("You Win!");backMenu();return;}
+            ctx.fillStyle="#000";ctx.fillRect(0,0,600,400);
+            ctx.fillStyle="#0ea5e9";ctx.fillRect(paddle.x,paddle.y,paddle.w,paddle.h);
+            ctx.beginPath();ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);ctx.fillStyle="#fff";ctx.fill();
+            ctx.fillStyle="#f97316";
+            bricks.forEach(b=>{if(b.alive)ctx.fillRect(b.x,b.y,b.w,b.h);});
+            anim=requestAnimationFrame(loop);
+        }
+        loop();
+    }
+</script>
+</body>
+</html>
